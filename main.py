@@ -4,6 +4,8 @@
 # And then i have created 2 csv files which will store all the spredsheet data ----- (reponses.csv)
 # and the data of the people which are added in the whatsapp grp **by this program**
 
+# Please do not use it for spam purposes
+
 
 
 from pydrive.auth import GoogleAuth
