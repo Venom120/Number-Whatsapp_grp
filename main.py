@@ -19,7 +19,7 @@ gauth.LocalWebserverAuth()  # Follow the authentication steps in your web browse
 drive = GoogleDrive(gauth)
 
 # Search for the file by name
-file_name = "Scriveners Club  (Responses)" # Remember to change your file name here
+file_name = "" # Remember to change your file name here
 file_list = drive.ListFile({'q': f"title = '{file_name}'"}).GetList()
 
 if len(file_list) == 0:
@@ -89,6 +89,7 @@ if (len(to_add) != 0):
     to = to_add
     print("Open add_participants of you grp ")
     print("DO NOT Click the search icon")
+     print("You have 10 seconds")
     time.sleep(10)
 
 
