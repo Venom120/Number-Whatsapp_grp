@@ -1,0 +1,6 @@
+pydrive
+pandas
+selenium
+requests
+webdriver-manager
+ipykernel

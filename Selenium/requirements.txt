@@ -1,4 +1,0 @@
-pydrive
-pandas
-csv
-selenium

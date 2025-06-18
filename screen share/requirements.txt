@@ -1,4 +1,0 @@
-pydrive
-pandas
-csv
-pyautogui
