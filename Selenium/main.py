@@ -17,11 +17,13 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.microsoft import EdgeChromiumDriverManager
 
-import time, os
+import time, os, csv, json
 import pandas as pd
+from tkinter import filedialog
+import tkinter as tk
 
 # %% [markdown]
-# ### Global Variables
+# ### Selenium Variables
 
 # %%
 """!!!!!!!!!!!!!!!! Change these acccording to your system !!!!!!!!!!!!!!!!"""
@@ -46,6 +48,46 @@ else: # Linux
 # ### Opening whatsapp using options
 
 # %%
+
+CONFIG_FILE = "config.json"
+def load_config():
+    if os.path.exists(CONFIG_FILE):
+        with open(CONFIG_FILE, 'r') as f:
+            return json.load(f)
+    return {}
+def get_edge_driver_path():
+    config = load_config()
+    driver_path = config.get("driver_path")
+
+    if driver_path and os.path.exists(driver_path):
+        print(f"[INFO] Using saved Edge driver path: {driver_path}")
+        return driver_path
+    else:
+        root = tk.Tk()
+        root.withdraw() # Hide the main window
+        if os.name == "nt": # Windows
+            print("[WARN] Edge driver path not found or invalid. Please select the msedgedriver.exe file.")
+            file_path = filedialog.askopenfilename(
+                title="Select msedgedriver.exe",
+                filetypes=[("Edge Driver Executable", "msedgedriver.exe")]
+            )
+        else: # Linux
+            print("[WARN] Edge driver path not found or invalid. Please select the msedgedriver file.")
+            file_path = filedialog.askopenfilename(
+                title="Select msedgedriver",
+                filetypes=[("Edge Driver Bin", "msedgedriver")]
+            )
+        root.destroy() # Destroy the Tkinter root window
+        if file_path:
+            config["driver_path"] = file_path
+            with open(CONFIG_FILE, 'w') as f:
+                json.dump(config, f, indent=4)
+                print(f"[INFO] Saved Edge driver path: {file_path}")
+            return file_path
+        else:
+            print("[!] No Edge driver selected. Exiting.")
+            exit()
+            
 def setup_driver():
         """Set up and configure the WebDriver"""
         edge_options = Options()
@@ -68,9 +110,14 @@ def setup_driver():
         edge_options.binary_location = exec_path
         
         # Initialize the driver
-        service = Service(EdgeChromiumDriverManager().install())
+        try:
+            service = Service(EdgeChromiumDriverManager().install())
+        except Exception as e:
+            print("[!] Error installing Edge driver")
+            print("[!] Rolling back to using user defined Edge driver path.")
+            service = Service(executable_path=get_edge_driver_path())
         driver = webdriver.Edge(service=service, options=edge_options)
-        # driver.set_window_size(1280, 800)
+        driver.set_window_size(1280, 800)
         
         # Set page load timeout
         driver.set_page_load_timeout(timeout)
@@ -129,7 +176,7 @@ print("Group name validation done!")
 group_details = driver.find_element(By.XPATH, '//*[@id="main"]/header/div[2]/div[1]/div/span')
 group_details.click()
 time.sleep(1)
-add_screen = driver.find_element(By.XPATH, '//*[@id="app"]/div/div[3]/div/div[5]/span/div/span/div/div/div/section/div[11]/div[2]/div[1]/div/div[2]/div/div/div')
+add_screen = driver.find_element(By.XPATH, '//*[@id="app"]/div[1]/div/div[3]/div/div[5]/span/div/span/div/div/div/section/div[13]/div[2]/div[1]/div')
 add_screen.click()
 
 # %% [markdown]
@@ -149,7 +196,7 @@ drive = GoogleDrive(gauth)
 # Search for the file by name
 file_name = "<GDRIVE_FILE_NAME>"
 file_list = drive.ListFile({'q': f"title = '{file_name}'"}).GetList()
-df = pd.DataFrame()
+
 if len(file_list) == 0:
     print(f"File '{file_name}' not found in Google Drive.")
 else:
@@ -157,16 +204,40 @@ else:
 
     # Download the CSV file
     csv_file.GetContentFile("../Data/responses.csv", mimetype="text/csv")
-    df = pd.read_csv("../Data/responses.csv")
     print(f"File '{file_name}' downloaded successfully.")
 
 # %% [markdown]
 # ### Finding data
 
 # %%
+df = pd.read_csv("../Data/responses.csv")
 print(df.head(2))
 
 # %%
+# Check if file exists
+filename = '../Data/added.csv'
+headers = ['Name', 'Phone No.']
+
+file_exists = os.path.isfile(filename)
+if not file_exists:
+    # Create file with headers
+    with open(filename, 'w', newline='') as f:
+        writer = csv.writer(f)
+        writer.writerow(headers)
+else:
+    # Check if headers exist
+    with open(filename, 'r', newline='') as f:
+        reader = csv.reader(f)
+        first_row = next(reader, None)
+        if first_row != headers:
+            # Read existing data
+            data = list(reader)
+            # Rewrite file with headers
+            with open(filename, 'w', newline='') as fw:
+                writer = csv.writer(fw)
+                writer.writerow(headers)
+                writer.writerows(data)
+
 # Correcting data
 ph_list = df['Phone No.'].to_list()
 added_list = pd.read_csv("../Data/added.csv")['Phone No.'].to_list()
@@ -190,18 +261,19 @@ print(to_add)
 def click_cross():
     try:
         cross = WebDriverWait(driver, 2).until(
-            EC.element_to_be_clickable((By.XPATH, '//*[@id="app"]/div/span[2]/div/span/div/div/div/div/div/div/div[1]/div/div[2]/span/button/span'))
+            EC.element_to_be_clickable((By.XPATH, '//*[@id="app"]/div[1]/div/span[2]/div/span/div/div/div/div/div/div/div[1]/div/div[2]/span/button/span'))
         )
         cross.click()
     except Exception as e:
-        print(f"[!] Failed to click cross: {e}")
+        print(f"[!] Failed to click cross")
 
 def add_participants(numbers):
+    click_cross()
     for num in numbers:
         try:
             # Wait for the search box to be clickable
             search_box = WebDriverWait(driver, 2).until(
-                EC.element_to_be_clickable((By.XPATH, '//*[@id="app"]/div/span[2]/div/span/div/div/div/div/div/div/div[1]/div/div[2]/div/div/div[1]/p'))
+                EC.element_to_be_clickable((By.XPATH, '//*[@id="app"]/div[1]/div/span[2]/div/span/div/div/div/div/div/div/div[1]/div/div[2]/div/div/div[1]/p'))
             )
             search_box.click()
             search_box.clear()
@@ -209,32 +281,43 @@ def add_participants(numbers):
 
             # Wait for the contact result section to load
             WebDriverWait(driver, 2).until(
-                EC.presence_of_element_located((By.XPATH, '/html/body/div[1]/div/div/span[2]/div/span/div/div/div/div/div/div/div[2]/div/div/div[1]'))
+                EC.presence_of_element_located((By.XPATH, '//*[@id="app"]/div[1]/div/span[2]/div/span/div/div/div/div/div/div/div[1]/div/div[2]/div/div/div[1]'))
             )
 
-            try:
-                # First option: contact found
-                contact = WebDriverWait(driver, 2).until(
-                    EC.element_to_be_clickable((By.XPATH, '//*[@id="app"]/div/span[2]/div/span/div/div/div/div/div/div/div[2]/div/div/div/div[1]/div/div[2]'))
-                )
-            except:
-                # Second option: contact not saved
-                contact = WebDriverWait(driver, 2).until(
-                    EC.element_to_be_clickable((By.XPATH, '//*[@id="app"]/div/span[2]/div/span/div/div/div/div/div/div/div[2]/div/div/div/div[2]/div/div[2]'))
-                )
+            # Flag to determine if we should attempt to click a contact
+            should_attempt_contact_click = True
+            # Try to find divContainerDesc with a very short timeout, as its presence is a condition
+            divContainerDesc = WebDriverWait(driver, 2).until(
+                EC.presence_of_element_located((By.XPATH, '//*[@id="app"]/div[1]/div/span[2]/div/span/div/div/div/div/div/div/div[2]/div/div/div/div[2]/div/span/div/div/div[2]/div[2]/div'))
+            )
+            # If divContainerDesc is found, check already added within it
+            if divContainerDesc.get_attribute("innerHTML") == "Already added to group":
+                should_attempt_contact_click = False
 
-            contact.click()
-            click_cross()
+            if should_attempt_contact_click:
+                contact = WebDriverWait(driver, 2).until(
+                    EC.element_to_be_clickable((By.XPATH, '//*[@id="app"]/div[1]/div/span[2]/div/span/div/div/div/div/div/div/div[2]/div/div/div/div[2]/div/span/div/div'))
+                )
+                if contact:
+                    contact.click()
+                    print(f"Contact {num} clicked successfully.")
+                else:
+                    # If we were supposed to click but couldn't find a contact, it's an error.
+                    raise Exception(f"No clickable contact element found for {num} after search.")
+            else:
+                print(f"Contact {num} was already added, skipping click.")
+                time.sleep(1)
 
         except Exception as e:
             print(f"Error while adding {num}:\n{e}")
-            click_cross()
-            continue
+        finally:
+            click_cross() # Always click the cross to close the search/add participant panel.
+
 def count_added_participants():
     try:
         # Wait for the participants container to be present
         container = WebDriverWait(driver, 3).until(
-            EC.presence_of_element_located((By.XPATH, '//*[@id="app"]/div/span[2]/div/span/div/div/div/div/div/div/span[1]'))
+            EC.presence_of_element_located((By.XPATH, '//*[@id="app"]/div[1]/div/span[2]/div/span/div/div/div/div/div/div/span[1]'))
         )
 
         # Find all direct child divs (each one representing a participant)
@@ -270,36 +353,9 @@ then you may need to invite them to the group
 # ### Updating added.csv
 
 # %%
-import csv
-
-filename = '../Data/added.csv'
-headers = ['Name', 'Phone No.']
-
 # Prepare add_csv as before
 add_csv = [df.set_index("Phone No.").loc[row, "Name"] for row in to_add]
 add_csv = list([(addName, addPhone) for addName, addPhone in zip(add_csv, to_add)])
-
-# Check if file exists
-file_exists = os.path.isfile(filename)
-
-if not file_exists:
-    # Create file with headers
-    with open(filename, 'w', newline='') as f:
-        writer = csv.writer(f)
-        writer.writerow(headers)
-else:
-    # Check if headers exist
-    with open(filename, 'r', newline='') as f:
-        reader = csv.reader(f)
-        first_row = next(reader, None)
-        if first_row != headers:
-            # Read existing data
-            data = list(reader)
-            # Rewrite file with headers
-            with open(filename, 'w', newline='') as fw:
-                writer = csv.writer(fw)
-                writer.writerow(headers)
-                writer.writerows(data)
 
 # Append new rows
 with open(filename, 'a', newline='') as f:
