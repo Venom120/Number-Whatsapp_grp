@@ -13,9 +13,9 @@ This method utilizes screen mirroring from a mobile device to a laptop and autom
 - Requires manual setup of screen mirroring and positioning of the WhatsApp "Add Participant" screen.
 
 **Files:**
-- [`screen share/main.ipynb`](screen/ share/main.ipynb): Jupyter notebook containing the automation logic.
-- [`screen share/req.txt`](screen/ share/req.txt): Lists Python dependencies (`pydrive`, `pandas`, `csv`, `pyautogui`).
-- [`screen share/client_secrets.json`](screen/ share/client_secrets.json): Google API client secrets for accessing Google Drive.
+- [`screen share/main.ipynb`](screen%20share/req.txt): Jupyter notebook containing the automation logic.
+- [`screen share/req.txt`](screen%20share/req.txt): Lists Python dependencies (`pydrive`, `pandas`, `csv`, `pyautogui`).
+- [`screen share/client_secrets.json`](screen%20share/client_secrets.json): Google API client secrets for accessing Google Drive.
 
 ## Selenium Method
 
@@ -33,5 +33,6 @@ This method automates the process using WhatsApp Web and the `selenium` library 
 - [`Selenium/main.py`](Selenium/main.py): Python script version of the automation logic.
 - [`Selenium/req.txt`](Selenium/req.txt): Lists Python dependencies (`pydrive`, `pandas`, `selenium`, `requests`, `webdriver-manager`, `ipykernel`).
 - [`Selenium/client_secrets.json`](Selenium/client_secrets.json): Google API client secrets for accessing Google Drive.
+
 
 Choose the method that best suits your needs and technical setup. The Selenium method is generally recommended for its robustness.
