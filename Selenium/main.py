@@ -1,10 +1,8 @@
-# %% [markdown]
+
 # ### This code uses whatsapp web to add number
 
-# %% [markdown]
 # ### Importing relevant Modules
 
-# %%
 from pydrive.auth import GoogleAuth
 from pydrive.drive import GoogleDrive
 
@@ -22,18 +20,17 @@ import pandas as pd
 from tkinter import filedialog
 import tkinter as tk
 
-# %% [markdown]
 # ### Selenium Variables
 
-# %%
 """!!!!!!!!!!!!!!!! Change these acccording to your system !!!!!!!!!!!!!!!!"""
 timeout = 10
-your_username = "<YOUR_USERNAME>"  # Replace with your actual username of the system
+
+home_dir = os.path.expanduser("~")  # User home directory (C:/Users/<name> on Windows, /home/<name> on Linux)
 
 if os.name == 'nt': # Windows
-    user_data_dir = f"C:/Users/{your_username}/AppData/Local/Microsoft/Edge/User Data/Default" # Replace with your actual profile path
+    user_data_dir = os.path.join(home_dir, "AppData/Local/Microsoft/Edge/User Data/Default")
 elif os.name == 'posix': # Linux
-    user_data_dir = f"/home/{your_username}/.config/microsoft-edge/Default"  # Replace with your actual profile path
+    user_data_dir = os.path.join(home_dir, ".config/microsoft-edge/Default")
 else:
     raise Exception("Unsupported OS. Please update the user_data_dir path accordingly.") 
 
@@ -44,10 +41,8 @@ else: # Linux
     exec_path = "/usr/bin/microsoft-edge-stable" # Replace with your actual profile path
 
 
-# %% [markdown]
 # ### Opening whatsapp using options
 
-# %%
 
 CONFIG_FILE = "config.json"
 def load_config():
@@ -101,7 +96,7 @@ def setup_driver():
         edge_options.add_experimental_option("detach", True)
         
         # Set user agent
-        edge_options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) edge/119.0.0.0 Safari/537.36")
+        edge_options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36 Edg/119.0.0.0")
         
         # Use user data directory for session persistence
         edge_options.add_argument(f"--user-data-dir={user_data_dir}")
@@ -127,7 +122,6 @@ def setup_driver():
 
         return driver
 
-# %%
 # if already logged in to whatsapp then no need to login again this way
 driver = setup_driver()
 
@@ -142,78 +136,126 @@ while True:
     except Exception as e:
         time.sleep(2)
 
-# %% [markdown]
 # ### Finding Group name
 
-# %%
 """!!!!!!!!!!!!!!!! Change this Name to your WP group name !!!!!!!!!!!!!!!!"""
-gname = "<GROUP_NAME>"  # Replace with your actual group name
+gname = "Optus Placement Drive X IIIT Ranchi"  # Replace with your actual group name
+
+SEARCH_BOX_LOCATORS = [
+    (By.CSS_SELECTOR, '#side input[aria-label="Search or start a new chat"]'),
+    (By.CSS_SELECTOR, '#side input[data-tab]'),
+    (By.CSS_SELECTOR, '#side input[type="text"]'),
+    (By.CSS_SELECTOR, '#side div[contenteditable="true"]'),
+]
+
+def get_search_box(timeout=10):
+    deadline = time.time() + timeout
+    last_err = None
+    for loc in SEARCH_BOX_LOCATORS:
+        try:
+            remaining = max(deadline - time.time(), 1)
+            return WebDriverWait(driver, remaining).until(EC.element_to_be_clickable(loc))
+        except Exception as e:
+            last_err = e
+    raise last_err # type: ignore
+
+def clear_search_box():
+    try:
+        box = get_search_box(3)
+        box.click()
+        box.send_keys(Keys.CONTROL, "a")
+        box.send_keys(Keys.DELETE)
+    except Exception:
+        pass
+
 while True:
     try:
-        search_box = driver.find_element(By.XPATH, '//*[@id="side"]/div[1]/div/div[2]/div/div/div[1]/p')
+        search_box = get_search_box()
         search_box.click()  # Click to activate the search box
+        search_box.send_keys(Keys.CONTROL, "a")
+        search_box.send_keys(Keys.DELETE)
         search_box.send_keys(gname)  # Type the group name
-        search_box.send_keys(Keys.ENTER)  # Press Enter to search
+        time.sleep(2)
+
+        # Find exact match among the search results and click it
+        results = driver.find_elements(By.CSS_SELECTOR, '#pane-side [title]')
+        match = next((r for r in results if r.get_attribute('title').strip().lower() == gname.strip().lower()), None)  # type: ignore
+        if match is None:
+            raise Exception(f"No search result found for '{gname}'")
+        match.click()
         time.sleep(3)
+
         # Check if the group is opened by looking for the chat header
-        chat_header = driver.find_element(By.XPATH, f'//*[@id="main"]/header/div[2]/div[1]/div/span')
+        chat_header = driver.find_element(By.XPATH, '//*[@id="main"]/header/div[1]/div[2]/div[1]/div/span')
         break
 
     except Exception as e:
-        print("Group not found, enter exact group name!! - ")
-        gname=input()
-        cross=driver.find_element(By.XPATH, '//*[@id="side"]/div[1]/div/div[2]/span/button/span')
-        cross.click()
+        print(f"[!] {e}")
+        print("Group not found, enter exact group name!! - ", end="")
+        gname = input().strip()
+        clear_search_box()
         time.sleep(1)
 
 print("Group name validation done!")
 
-
-# %% [markdown]
 # ### Opening Add participant screen
 
-# %%
-group_details = driver.find_element(By.XPATH, '//*[@id="main"]/header/div[2]/div[1]/div/span')
+group_details = driver.find_element(By.XPATH, '//*[@id="main"]/header/div[1]/div[2]/div[1]/div/span')
 group_details.click()
 time.sleep(1)
-add_screen = driver.find_element(By.XPATH, '//*[@id="app"]/div[1]/div/div[3]/div/div[5]/span/div/span/div/div/div/section/div[13]/div[2]/div[1]/div')
+add_screen = driver.find_element(By.XPATH, '//*[@id="app"]/div/div/div[3]/div/div[6]/span/div/span/div/div/div/div/section/div[11]/div/div[1]/div')
 add_screen.click()
 
-# %% [markdown]
-# ### Bringing data from google spreadsheets
+# ### Loading data (Google Drive or local CSV)
 
-# %%
-# Remember to put your clients_secrets.json in 'pwd'
-# Authenticate with your Google account
-gauth = GoogleAuth()
-gauth.LocalWebserverAuth()  # Follow the authentication steps in your web browser
+def load_from_gdrive(file_name, dest_path):
+    # Remember to put your client_secrets.json in 'pwd'
+    # Authenticate with your Google account
+    gauth = GoogleAuth()
+    gauth.LocalWebserverAuth()  # Follow the authentication steps in your web browser
 
-# Create a GoogleDrive instance
-drive = GoogleDrive(gauth)
+    # Create a GoogleDrive instance
+    drive = GoogleDrive(gauth)
 
-# %%
-"""!!!!!!!!!!!!!!!! Change file name to your file name in Gdrive !!!!!!!!!!!!!!!!"""
-# Search for the file by name
-file_name = "<GDRIVE_FILE_NAME>"
-file_list = drive.ListFile({'q': f"title = '{file_name}'"}).GetList()
-
-if len(file_list) == 0:
-    print(f"File '{file_name}' not found in Google Drive.")
-else:
-    csv_file = file_list[0]
+    # Search for the file by name
+    file_list = drive.ListFile({'q': f"title = '{file_name}'"}).GetList()
+    if len(file_list) == 0:
+        raise FileNotFoundError(f"File '{file_name}' not found in Google Drive.")
 
     # Download the CSV file
-    csv_file.GetContentFile("../Data/responses.csv", mimetype="text/csv")
-    print(f"File '{file_name}' downloaded successfully.")
+    file_list[0].GetContentFile(dest_path, mimetype="text/csv")
+    print(f"File '{file_name}' downloaded successfully to '{dest_path}'.")
 
-# %% [markdown]
+def load_from_local_csv(csv_path):
+    """Validate a local CSV file (absolute or relative path) and return its absolute path."""
+    if not csv_path:
+        raise ValueError("local_csv_file is empty. Set a path to your CSV file.")
+    csv_path = os.path.abspath(os.path.expanduser(csv_path))
+    if not os.path.isfile(csv_path):
+        raise FileNotFoundError(f"CSV file not found: {csv_path}")
+    print(f"[INFO] Using local CSV: {csv_path}")
+    return csv_path
+
+# ### Data source settings
+
+"""!!!!!!!!!!!!!!!! Change these acccording to your system !!!!!!!!!!!!!!!!"""
+data_mode = "csv"  # "gdrive" (Google Drive file) or "csv" (local CSV file)
+gdrive_file_name = "Scriveners Club Old form Response"  # File name in Google Drive (used when data_mode == "gdrive")
+local_csv_file = r"../Data/numbers.csv"  # Path to local CSV with a 'Phone No.' column, absolute or relative (used when data_mode == "csv")
+responses_file = "../Data/responses.csv"  # Local copy read later (gdrive download target)
+
+if data_mode == "gdrive":
+    load_from_gdrive(gdrive_file_name, responses_file)
+elif data_mode == "csv":
+    responses_file = load_from_local_csv(local_csv_file)
+else:
+    raise ValueError(f"Unknown data_mode '{data_mode}'. Use 'gdrive' or 'csv'.")
+
 # ### Finding data
 
-# %%
-df = pd.read_csv("../Data/responses.csv")
-print(df.head(2))
+df = pd.read_csv(responses_file)
+df.head(2)
 
-# %%
 # Check if file exists
 filename = '../Data/added.csv'
 headers = ['Name', 'Phone No.']
@@ -254,94 +296,126 @@ if len(to_add) == 0:
 
 print(to_add)
 
-# %% [markdown]
 # ### Functions
 
-# %%
+# For Testing
+to_add = ["0000000000", "1111111111", "2222222222"]  # Example phone numbers to add
+
+ADD_SEARCH_LOCATORS = [
+    (By.CSS_SELECTOR, 'input[aria-label="Search name, number or @username"]'),
+    (By.CSS_SELECTOR, 'input[placeholder*="Search name"]'),
+    (By.CSS_SELECTOR, 'div[role="dialog"] input[type="text"]'),
+]
+
+def find_first(locators, timeout=5):
+    deadline = time.time() + timeout
+    last_err = Exception("no locator matched")
+    for loc in locators:
+        try:
+            remaining = max(deadline - time.time(), 1)
+            return WebDriverWait(driver, remaining).until(EC.element_to_be_clickable(loc))
+        except Exception as e:
+            last_err = e
+    raise last_err
+
+def get_add_search_box(timeout=5):
+    return find_first(ADD_SEARCH_LOCATORS, timeout)
+
+def clear_field(el):
+    el.click()
+    el.send_keys(Keys.CONTROL, "a")
+    el.send_keys(Keys.DELETE)
+
 def click_cross():
+    """Clear the add-participant search field (replaces the old X button)."""
     try:
-        cross = WebDriverWait(driver, 2).until(
-            EC.element_to_be_clickable((By.XPATH, '//*[@id="app"]/div[1]/div/span[2]/div/span/div/div/div/div/div/div/div[1]/div/div[2]/span/button/span'))
-        )
-        cross.click()
-    except Exception as e:
-        print(f"[!] Failed to click cross")
+        clear_field(get_add_search_box(2))
+    except Exception:
+        print("[!] Failed to clear search box")
+
+def is_already_added():
+    """The 'Already added to group' note only shows for the current search result."""
+    xpath = '//*[contains(normalize-space(.), "Already added to group") and not(.//*[contains(normalize-space(.), "Already added to group")])]'
+    for note in driver.find_elements(By.XPATH, xpath):
+        try:
+            if note.is_displayed():
+                return True
+        except Exception:
+            pass
+    return False
+
+def find_result_row(num):
+    num = str(num)
+    xpaths = [
+        f'//*[@id="app"]//div[@role="button"][.//*[contains(normalize-space(.),"{num}")]]',
+        f'//*[@id="app"]//div[@role="listitem"][.//*[contains(normalize-space(.),"{num}")]]',
+        f'//span[(normalize-space()="{num}" or @title="{num}") and not(ancestor::*[@id="pane-side"]) and not(ancestor::*[@id="main"])]',
+    ]
+    for xp in xpaths:
+        for row in driver.find_elements(By.XPATH, xp):
+            try:
+                if row.is_displayed():
+                    return row
+            except Exception:
+                pass
+    return None
 
 def add_participants(numbers):
     click_cross()
     for num in numbers:
         try:
-            # Wait for the search box to be clickable
-            search_box = WebDriverWait(driver, 2).until(
-                EC.element_to_be_clickable((By.XPATH, '//*[@id="app"]/div[1]/div/span[2]/div/span/div/div/div/div/div/div/div[1]/div/div[2]/div/div/div[1]/p'))
-            )
-            search_box.click()
-            search_box.clear()
+            search_box = get_add_search_box()
+            clear_field(search_box)
             search_box.send_keys(str(num))
+            time.sleep(2)
 
-            # Wait for the contact result section to load
-            WebDriverWait(driver, 2).until(
-                EC.presence_of_element_located((By.XPATH, '//*[@id="app"]/div[1]/div/span[2]/div/span/div/div/div/div/div/div/div[1]/div/div[2]/div/div/div[1]'))
-            )
-
-            # Flag to determine if we should attempt to click a contact
-            should_attempt_contact_click = True
-            # Try to find divContainerDesc with a very short timeout, as its presence is a condition
-            divContainerDesc = WebDriverWait(driver, 2).until(
-                EC.presence_of_element_located((By.XPATH, '//*[@id="app"]/div[1]/div/span[2]/div/span/div/div/div/div/div/div/div[2]/div/div/div/div[2]/div/span/div/div/div[2]/div[2]/div'))
-            )
-            # If divContainerDesc is found, check already added within it
-            if divContainerDesc.get_attribute("innerHTML") == "Already added to group":
-                should_attempt_contact_click = False
-
-            if should_attempt_contact_click:
-                contact = WebDriverWait(driver, 2).until(
-                    EC.element_to_be_clickable((By.XPATH, '//*[@id="app"]/div[1]/div/span[2]/div/span/div/div/div/div/div/div/div[2]/div/div/div/div[2]/div/span/div/div'))
-                )
-                if contact:
-                    contact.click()
-                    print(f"Contact {num} clicked successfully.")
-                else:
-                    # If we were supposed to click but couldn't find a contact, it's an error.
-                    raise Exception(f"No clickable contact element found for {num} after search.")
-            else:
+            if is_already_added():
                 print(f"Contact {num} was already added, skipping click.")
                 time.sleep(1)
+                continue
+
+            row = find_result_row(num)
+            if row is None:
+                # No labelled row found: let the combobox pick the first result
+                search_box.send_keys(Keys.ENTER)
+                time.sleep(1)
+                print(f"Contact {num} selected via Enter.")
+            else:
+                row.click()
+                time.sleep(1)
+                print(f"Contact {num} clicked successfully.")
 
         except Exception as e:
             print(f"Error while adding {num}:\n{e}")
         finally:
-            click_cross() # Always click the cross to close the search/add participant panel.
+            click_cross()  # Clear the search field before the next number
 
 def count_added_participants():
     try:
         # Wait for the participants container to be present
         container = WebDriverWait(driver, 3).until(
-            EC.presence_of_element_located((By.XPATH, '//*[@id="app"]/div[1]/div/span[2]/div/span/div/div/div/div/div/div/span[1]'))
+            EC.presence_of_element_located((By.XPATH, '//*[@id="app"]/div/div/span[2]/div/span/div/div/div/div/div/div/div/div[2]'))
         )
 
         # Find all direct child divs (each one representing a participant)
         participant_divs = container.find_elements(By.XPATH, './div')
 
-        print(f"[✓] Total participants added: {len(participant_divs)-1}")
-        return len(participant_divs)-1 # Subtracting 1 for the extra div that is present
+        print(f"[✓] Total participants added: {len(participant_divs)}")
+        return len(participant_divs) # Subtracting 1 for the extra div that is present
 
     except Exception as e:
         print(f"[!] Error counting participants: {e}")
         return 0
 
 
-# %%
 add_participants(to_add)
 total = count_added_participants()
 if total != len(to_add):
     print(f"[!] Some participants were not added. Expected: {len(to_add)}, Actual: {total}")
 
 
-# %% [markdown]
 # ### Manual step (for now)
 
-# %%
 # will automate this later
 
 """
@@ -349,10 +423,8 @@ click the tick icon to confirm adding participants
 then you may need to invite them to the group
 """
 
-# %% [markdown]
 # ### Updating added.csv
 
-# %%
 # Prepare add_csv as before
 add_csv = [df.set_index("Phone No.").loc[row, "Name"] for row in to_add]
 add_csv = list([(addName, addPhone) for addName, addPhone in zip(add_csv, to_add)])
@@ -363,4 +435,5 @@ with open(filename, 'a', newline='') as f:
     writer.writerows(add_csv)
 
 print(add_csv)
+
 

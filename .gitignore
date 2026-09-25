@@ -1,2 +1,5 @@
 *.json
 .venv/
+Data/numbers.csv
+*pycache*
+.vscode
